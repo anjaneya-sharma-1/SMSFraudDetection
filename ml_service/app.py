@@ -35,13 +35,29 @@ async def load_models():
         # Load the model from the pkl file
         model_path = "spam_detection_model.pkl"
         if os.path.exists(model_path):
+            # Try importing required modules first
+            try:
+                import numpy
+                import sklearn
+                logger.info(f"✅ NumPy version: {numpy.__version__}")
+                logger.info(f"✅ Scikit-learn version: {sklearn.__version__}")
+            except ImportError as ie:
+                logger.error(f"❌ Missing required dependency: {ie}")
+                raise ie
+            
             model = joblib.load(model_path)
             logger.info(f"✅ Model loaded successfully from {model_path}")
+            
+            # Verify model is callable
+            if not hasattr(model, 'predict'):
+                raise AttributeError("Loaded model does not have predict method")
+            
         else:
             logger.error(f"❌ Model file not found: {model_path}")
             raise FileNotFoundError(f"Model file not found: {model_path}")
     except Exception as e:
         logger.error(f"❌ Error loading model: {e}")
+        logger.error(f"❌ Error type: {type(e).__name__}")
         raise HTTPException(status_code=500, detail=f"Failed to load model: {e}")
 
 @app.get("/health", response_model=HealthResponse)

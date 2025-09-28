@@ -7,13 +7,18 @@ WORKDIR /app
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
     gcc \
+    g++ \
+    build-essential \
     && rm -rf /var/lib/apt/lists/*
+
+# Upgrade pip and install wheel for better compatibility
+RUN pip install --upgrade pip wheel setuptools
 
 # Copy requirements first for better caching
 COPY requirements.txt .
 
-# Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+# Install Python dependencies with no cache for clean install
+RUN pip install --no-cache-dir --no-binary=numpy,scipy -r requirements.txt
 
 # Copy application code
 COPY . .
