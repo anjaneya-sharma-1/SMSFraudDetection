@@ -1,164 +1,198 @@
 # 🛡️ SMS Fraud Detection System
 
-A hybrid AI-powered system that combines traditional machine learning with large language models to detect fraudulent SMS messages.
+An intelligent SMS fraud detection system that combines traditional machine learning with large language model agents to provide comprehensive analysis of potentially fraudulent messages.
 
-## 🏗️ Architecture
+## 🧠 How It Works
+
+### **Two-Tier Analysis Approach**
+
+The system uses a hybrid approach combining the speed of traditional ML with the contextual understanding of LLMs:
 
 ```
-📱 Next.js Frontend (Vercel)
-    ↓ 
-🧠 4 LLM Agents (Groq) + 🤖 ML Model (Render)
-    ↓
-🎯 Hybrid Decision Engine
+📱 SMS Message Input
+        ↓
+┌─────────────────────┐    ┌─────────────────────┐
+│   ML Classifier     │    │   4 LLM Agents      │
+│   (Fast - 10ms)     │    │   (Smart - 2-3s)    │
+│                     │    │                     │
+│ • SVM + TF-IDF      │    │ • Content Analysis  │
+│ • 93.97% Accuracy   │    │ • Link Security     │
+│ • Statistical       │    │ • Sender Verify     │
+│   Patterns          │    │ • Context Aware     │
+└─────────────────────┘    └─────────────────────┘
+        ↓                           ↓
+        └───────────┐   ┌───────────┘
+                    ↓   ↓
+            🎯 Hybrid Decision Engine
+                    ↓
+            📊 Comprehensive Report
 ```
 
-## ✨ Features
+### **1. Traditional ML Analysis**
 
-- **🚀 Hybrid Analysis**: Traditional ML (93.97% accuracy) + LLM contextual understanding
-- **⚡ Parallel Processing**: ML and LLM agents run simultaneously
-- **🎨 Beautiful UI**: Clear visualization of both ML and LLM results
-- **🌐 Production Ready**: Vercel + Render deployment configuration
-- **🔄 Graceful Fallback**: Works even if one system fails
+- **Technology**: SVM classifier with TF-IDF vectorization
+- **Speed**: ~10ms response time
+- **Accuracy**: 93.97% on SMS spam datasets
+- **Output**: Prediction (spam/ham), confidence score, class probabilities
 
-## 🛠️ Tech Stack
+### **2. LLM Agent Analysis**
 
-### Frontend & LLM
-- **Next.js 14** - React framework
-- **TypeScript** - Type safety
-- **Tailwind CSS** - Styling
-- **Groq API** - Fast LLM inference (4 specialized agents)
+Four specialized AI agents analyze different aspects:
 
-### ML Backend  
-- **FastAPI** - Python web framework
-- **scikit-learn** - SVM + TF-IDF model (93.97% accuracy)
-- **NLTK** - Text preprocessing
-- **Uvicorn** - ASGI server
+#### **Content Analysis Agent**
+- Detects psychological manipulation patterns
+- Identifies urgency, fear tactics, and authority pressure
+- Analyzes semantic meaning beyond keyword matching
 
-## 🚀 Quick Start
+#### **Link Security Agent**  
+- Extracts and analyzes URLs
+- Checks for domain spoofing and suspicious patterns
+- Evaluates redirect chains and URL shorteners
 
-### Development Setup
-```bash
-# 1. Install dependencies
-npm install
-python -m venv .venv
-.venv/Scripts/activate  # Windows
-source .venv/bin/activate  # macOS/Linux
-pip install -r ml_service/requirements.txt
+#### **Sender Verification Agent**
+- Assesses sender authenticity
+- Detects brand impersonation attempts  
+- Analyzes phone number patterns and reply-to behaviors
 
-# 2. Set up environment variables
-cp .env.local.example .env.local
-# Add your GROQ_API_KEY
+#### **Context Awareness Agent**
+- Evaluates timing and frequency patterns
+- Considers message expectedness
+- Analyzes contextual anomalies
 
-# 3. Start both services
-./start-dev.bat  # Windows
-./start-dev.sh   # macOS/Linux
+### **3. Hybrid Decision Engine**
+
+- Combines statistical ML predictions with contextual LLM insights
+- Handles disagreements between systems intelligently
+- Provides detailed explanations for decisions
+- Gracefully handles system failures (works even if one component fails)
+
+## 🎯 Example Analysis
+
+**Input Message:**
+```
+"URGENT! Your account will be suspended. Verify now at fake-bank.com"
 ```
 
-### Manual Start
-```bash
-# Terminal 1: ML Service
-cd ml_service
-python app.py
-
-# Terminal 2: Next.js App
-npm run dev
+**ML Result:**
+```json
+{
+  "prediction": "spam",
+  "confidence": 0.89,
+  "probabilities": {
+    "ham": 0.11,
+    "spam": 0.89
+  }
+}
 ```
 
-## 🌐 Deployment
+**LLM Agent Results:**
+```json
+{
+  "content_agent": {
+    "risk_score": 0.85,
+    "signals": ["urgency_language", "fear_tactics", "action_pressure"],
+    "reasoning": "High-pressure language with artificial urgency"
+  },
+  "link_agent": {
+    "risk_score": 0.92,
+    "signals": ["suspicious_domain", "impersonation"],
+    "reasoning": "Domain mimics legitimate bank but is not authentic"
+  },
+  "sender_agent": {
+    "risk_score": 0.78,
+    "signals": ["brand_impersonation", "unauthorized_sender"],
+    "reasoning": "Claims to be from bank without proper verification"
+  },
+  "context_agent": {
+    "risk_score": 0.65,
+    "signals": ["unexpected_timing", "unsolicited"],
+    "reasoning": "Unexpected account verification request"
+  }
+}
+```
 
-### Production Deployment (Vercel + Render)
+**Final Decision:**
+```
+🚨 HIGH RISK - LIKELY FRAUD
+Both statistical analysis and contextual evaluation indicate fraudulent content with high confidence.
+```
 
-1. **Deploy ML Service to Render**:
-   - Push `ml_service/` to Git
-   - Import to Render dashboard
-   - Use provided `Dockerfile` and `render.yaml`
+## ⚡ Performance Characteristics
 
-2. **Deploy Next.js to Vercel**:
-   ```bash
-   npx vercel --prod
-   ```
-   
-3. **Configure Environment Variables in Vercel**:
-   - `GROQ_API_KEY`: Your Groq API key
-   - `ML_SERVICE_URL`: Your Render service URL
+| Metric | Value | Description |
+|--------|--------|-------------|
+| **ML Response Time** | ~10ms | Lightning-fast statistical analysis |
+| **LLM Analysis Time** | ~2-3s | Comprehensive contextual evaluation |
+| **Total Analysis Time** | ~3s | Complete hybrid analysis |
+| **ML Accuracy** | 93.97% | Tested on SMS spam datasets |
+| **Concurrent Processing** | Yes | ML and LLM run in parallel |
 
-See [DEPLOYMENT.md](DEPLOYMENT.md) for detailed instructions.
+## 🏗️ System Architecture
 
-## 🧪 How It Works
+### **Frontend (Next.js)**
+- Modern React-based interface
+- Real-time analysis visualization
+- Responsive design with component library
+- Type-safe with TypeScript
 
-### 1. **Traditional ML Analysis** (Fast - ~10ms)
-- SVM classifier with TF-IDF vectorization
-- Trained on SMS dataset with 93.97% accuracy
-- Returns: prediction, confidence, class probabilities
+### **ML Service (Python/FastAPI)**
+- Pre-trained SVM model with TF-IDF vectorization
+- RESTful API with automatic documentation
+- Efficient text preprocessing pipeline
+- Fast inference with scikit-learn
 
-### 2. **LLM Agent Analysis** (Contextual - ~2-3s)
-- **Content Analysis Agent**: Semantic patterns, psychological manipulation
-- **Link Security Agent**: URL analysis, domain reputation
-- **Sender Verification Agent**: Identity verification, spoofing detection
-- **Context Awareness Agent**: Timing, frequency, expectedness
+### **LLM Integration (Groq)**
+- Four specialized agent prompts
+- Parallel processing for speed
+- Structured JSON output parsing
+- Error handling and graceful degradation
 
-### 3. **Hybrid Decision Engine**
-- Combines both ML and LLM insights
-- Explains reasoning from both approaches
-- Handles disagreements intelligently
+## 🔧 Key Features
 
-## 📊 Example Analysis
+### **Accuracy & Speed**
+- Combines statistical precision with contextual understanding
+- Parallel processing minimizes total analysis time
+- High accuracy across different fraud types
 
-**Input**: `"URGENT! Your account will be suspended. Verify now at fake-bank.com"`
+### **Explainability**
+- Detailed reasoning from both ML and LLM components
+- Clear visualization of risk factors
+- Transparent decision-making process
 
-**ML Result**: 
-- Prediction: `spam` (89% confidence)
-- Probabilities: `{ham: 0.11, spam: 0.89}`
+### **Robustness**
+- Graceful fallback if one system fails
+- Input validation and error handling
+- Scalable architecture design
 
-**LLM Analysis**:
-- Content: High urgency, fear tactics (0.85 risk)
-- Link: Suspicious domain, not official bank (0.92 risk)
-- Sender: Impersonation indicators (0.78 risk)
-- Context: Unexpected timing (0.65 risk)
+### **User Experience**
+- Clean, intuitive interface
+- Real-time analysis feedback
+- Clear risk visualization
+- Mobile-responsive design
 
-**Final Decision**: `HIGH RISK` - "Both ML statistical analysis and contextual LLM evaluation identify this as a fraudulent message"
+## 🧪 Technical Implementation
 
-## 🔧 Configuration
+### **Machine Learning Pipeline**
+1. Text preprocessing (cleaning, tokenization)
+2. TF-IDF vectorization
+3. SVM classification
+4. Confidence calculation
+5. JSON response formatting
 
-### Environment Variables
+### **LLM Agent Pipeline**
+1. Specialized prompt engineering
+2. Parallel API calls to Groq
+3. JSON response parsing
+4. Score normalization
+5. Multi-agent decision fusion
 
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `GROQ_API_KEY` | Groq API key for LLM agents | `gsk_...` |
-| `ML_SERVICE_URL` | URL of the ML service | `https://your-service.onrender.com` |
-
-### Customization
-
-- **ML Model**: Replace `spam_detection_model.pkl` with your trained model
-- **LLM Agents**: Modify system prompts in `/app/api/analyze/route.ts`
-- **UI**: Customize components in `/components/`
-
-## 📈 Performance
-
-- **ML Service**: ~10ms response time
-- **LLM Agents**: ~2-3s parallel processing
-- **Total Analysis**: ~3s for comprehensive hybrid analysis
-- **Accuracy**: 93.97% (traditional ML) + contextual understanding (LLM)
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test locally with both services
-5. Submit a pull request
-
-## 📄 License
-
-MIT License - see [LICENSE](LICENSE) file for details.
-
-## 🙏 Acknowledgments
-
-- **Groq** for fast LLM inference
-- **Vercel** for excellent Next.js hosting
-- **Render** for reliable Python service hosting
-- **scikit-learn** for ML capabilities
+### **Frontend Integration**
+1. Form-based SMS input
+2. API route handling
+3. Real-time result display
+4. Error state management
+5. Responsive UI updates
 
 ---
 
-**🛡️ Protecting users from SMS fraud with the power of hybrid AI! 🚀**
+**🛡️ Protecting users from SMS fraud with intelligent hybrid AI analysis! 🚀**
