@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { generateText } from "ai"
 import { groq } from "@ai-sdk/groq"
-import type { AnalysisResult, AgentResult, DecisionResult } from "@/lib/types"
+import type { AnalysisResult, AgentResult, DecisionResult, DetectionMethod } from "@/lib/types"
 import { clamp01, extractUrls, safeJson } from "@/lib/utils-local"
 
 // Configure function timeout for Vercel
@@ -108,6 +108,7 @@ export async function POST(req: Request) {
   const receivedAt = (body?.receivedAt ?? undefined) as string | undefined
   const priorFromSender = (body?.priorFromSender ?? undefined) as number | undefined
   const expected = (body?.expected ?? undefined) as boolean | undefined
+  const detectionMethod = (body?.detectionMethod ?? "both") as "ml-only" | "agents-only" | "both"
 
   if (!text || typeof text !== "string" || text.length > 8000) {
     return NextResponse.json({ error: "Provide SMS text (<= 8000 chars)" }, { status: 400 })
@@ -115,7 +116,7 @@ export async function POST(req: Request) {
 
   const urls = extractUrls(text)
 
-  // Build prompts per-agent
+  // Build prompts per-agent (only if agents are needed)
   const contentUser = `
 SMS:
 """${text}"""
@@ -151,60 +152,110 @@ Optional context:
 ${AGENT_OUTPUT_SCHEMA}
 `.trim()
 
-  // Run traditional ML and LLM agents in parallel
-  const [mlResult, contentRes, linkRes, senderRes, contextRes] = await Promise.all([
-    callMLService(text),
-    generateText({
-      model: groq("llama-3.3-70b-versatile"),
-      system: AGENTS.content.system,
-      prompt: contentUser,
-      temperature: 0.2,
-    }),
-    generateText({
-      model: groq("llama-3.1-8b-instant"),
-      system: AGENTS.link.system,
-      prompt: linkUser,
-      temperature: 0.2,
-    }),
-    generateText({
-      model: groq("llama-3.1-8b-instant"),
-      system: AGENTS.sender.system,
-      prompt: senderUser,
-      temperature: 0.2,
-    }),
-    generateText({
-      model: groq("llama-3.1-8b-instant"),
-      system: AGENTS.context.system,
-      prompt: contextUser,
-      temperature: 0.2,
-    }),
-  ])
+  // Run ML and/or agents based on selected method
+  let mlResult: MLResponse | null = null
+  let contentRes: any = null
+  let linkRes: any = null
+  let senderRes: any = null
+  let contextRes: any = null
 
-  // Parse agent JSONs safely
-  const parsedContent = safeJson<AgentJSON>(contentRes.text)
-  const parsedLink = safeJson<AgentJSON>(linkRes.text)
-  const parsedSender = safeJson<AgentJSON>(senderRes.text)
-  const parsedContext = safeJson<AgentJSON>(contextRes.text)
+  if (detectionMethod === "ml-only" || detectionMethod === "both") {
+    mlResult = await callMLService(text)
+  }
 
-  const toAgentResult = (key: keyof typeof AGENTS, parsed: AgentJSON | null): AgentResult => {
-    const def = AGENTS[key]
-    return {
-      key: def.key,
-      name: def.name,
-      score: clamp01(parsed?.score ?? 0.5),
-      signals: parsed?.signals ?? [],
-      features: parsed?.features ?? [],
-      rationale: parsed?.rationale ?? "",
+  if (detectionMethod === "agents-only" || detectionMethod === "both") {
+    [contentRes, linkRes, senderRes, contextRes] = await Promise.all([
+      generateText({
+        model: groq("llama-3.3-70b-versatile"),
+        system: AGENTS.content.system,
+        prompt: contentUser,
+        temperature: 0.2,
+      }),
+      generateText({
+        model: groq("llama-3.1-8b-instant"),
+        system: AGENTS.link.system,
+        prompt: linkUser,
+        temperature: 0.2,
+      }),
+      generateText({
+        model: groq("llama-3.1-8b-instant"),
+        system: AGENTS.sender.system,
+        prompt: senderUser,
+        temperature: 0.2,
+      }),
+      generateText({
+        model: groq("llama-3.1-8b-instant"),
+        system: AGENTS.context.system,
+        prompt: contextUser,
+        temperature: 0.2,
+      }),
+    ])
+  }
+
+  // Parse agent JSONs safely (only if agents were run)
+  let agents: any = null
+  if (detectionMethod === "agents-only" || detectionMethod === "both") {
+    const parsedContent = safeJson<AgentJSON>(contentRes.text)
+    const parsedLink = safeJson<AgentJSON>(linkRes.text)
+    const parsedSender = safeJson<AgentJSON>(senderRes.text)
+    const parsedContext = safeJson<AgentJSON>(contextRes.text)
+
+    const toAgentResult = (key: keyof typeof AGENTS, parsed: AgentJSON | null): AgentResult => {
+      const def = AGENTS[key]
+      return {
+        key: def.key,
+        name: def.name,
+        score: clamp01(parsed?.score ?? 0.5),
+        signals: parsed?.signals ?? [],
+        features: parsed?.features ?? [],
+        rationale: parsed?.rationale ?? "",
+      }
+    }
+
+    const contentAgent = toAgentResult("content", parsedContent)
+    const linkAgent = toAgentResult("link", parsedLink)
+    const senderAgent = toAgentResult("sender", parsedSender)
+    const contextAgent = toAgentResult("context", parsedContext)
+
+    agents = {
+      content: contentAgent,
+      link: linkAgent,
+      sender: senderAgent,
+      context: contextAgent,
     }
   }
 
-  const contentAgent = toAgentResult("content", parsedContent)
-  const linkAgent = toAgentResult("link", parsedLink)
-  const senderAgent = toAgentResult("sender", parsedSender)
-  const contextAgent = toAgentResult("context", parsedContext)
+  // Decision engine - adapt based on detection method
+  let decisionUser: string = ""
+  
+  if (detectionMethod === "ml-only") {
+    decisionUser = `
+Traditional ML Prediction (SVM + TF-IDF, 93.97% accuracy):
+${mlResult ? JSON.stringify({
+  prediction: mlResult.prediction,
+  confidence: mlResult.confidence,
+  is_fraud: mlResult.is_fraud,
+  probabilities: mlResult.probabilities
+}) : "ML service unavailable"}
 
-  // Decision engine
-  const decisionUser = `
+LLM agents were not used for this analysis (ML-only mode selected).
+
+Classify overall risk based primarily on the ML prediction.
+`.trim()
+  } else if (detectionMethod === "agents-only") {
+    decisionUser = `
+Traditional ML was not used for this analysis (agents-only mode selected).
+
+Four LLM agent outputs (JSON):
+- content: ${agents ? JSON.stringify(agents.content) : "Not available"}
+- link: ${agents ? JSON.stringify(agents.link) : "Not available"}
+- sender: ${agents ? JSON.stringify(agents.sender) : "Not available"}
+- context: ${agents ? JSON.stringify(agents.context) : "Not available"}
+
+Classify overall risk based on the LLM agent contextual analysis.
+`.trim()
+  } else {
+    decisionUser = `
 Traditional ML Prediction (SVM + TF-IDF, 93.97% accuracy):
 ${mlResult ? JSON.stringify({
   prediction: mlResult.prediction,
@@ -214,13 +265,14 @@ ${mlResult ? JSON.stringify({
 }) : "ML service unavailable"}
 
 Four LLM agent outputs (JSON):
-- content: ${JSON.stringify(contentAgent)}
-- link: ${JSON.stringify(linkAgent)}
-- sender: ${JSON.stringify(senderAgent)}
-- context: ${JSON.stringify(contextAgent)}
+- content: ${agents ? JSON.stringify(agents.content) : "Not available"}
+- link: ${agents ? JSON.stringify(agents.link) : "Not available"}
+- sender: ${agents ? JSON.stringify(agents.sender) : "Not available"}
+- context: ${agents ? JSON.stringify(agents.context) : "Not available"}
 
 Now classify overall risk combining both ML statistical analysis and LLM contextual reasoning.
 `.trim()
+  }
 
   const decisionRes = await generateText({
     model: groq("llama-3.3-70b-versatile"),
@@ -236,20 +288,15 @@ Now classify overall risk combining both ML statistical analysis and LLM context
   }
 
   const result: AnalysisResult = {
-    input: { text, receivedAt, priorFromSender, expected },
-    ml: {
-      prediction: mlResult?.prediction ?? "unknown",
-      confidence: mlResult?.confidence ?? 0.5,
-      probabilities: mlResult?.probabilities ?? {},
-      is_fraud: mlResult?.is_fraud ?? false,
-      available: mlResult !== null,
-    },
-    agents: {
-      content: contentAgent,
-      link: linkAgent,
-      sender: senderAgent,
-      context: contextAgent,
-    },
+    input: { text, receivedAt, priorFromSender, expected, detectionMethod },
+    ml: mlResult ? {
+      prediction: mlResult.prediction,
+      confidence: mlResult.confidence,
+      probabilities: mlResult.probabilities,
+      is_fraud: mlResult.is_fraud,
+      available: true,
+    } : null,
+    agents: agents,
     overall: {
       risk: parsedDecision.risk,
       confidence: parsedDecision.confidence != null ? clamp01(parsedDecision.confidence) : undefined,

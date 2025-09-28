@@ -7,13 +7,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { cn } from "@/lib/utils"
-import type { AnalysisResult, AgentResult, UserFeedbackPayload } from "@/lib/types"
+import type { AnalysisResult, AgentResult, UserFeedbackPayload, DetectionMethod } from "@/lib/types"
 
 type AnalyzeBody = {
   text: string
   receivedAt?: string
   priorFromSender?: number
+  detectionMethod: DetectionMethod
 }
 
 async function analyzeFetcher(url: string, { arg }: { arg: AnalyzeBody }) {
@@ -40,6 +42,7 @@ export default function SmsAnalyzerForm() {
   const [text, setText] = useState("")
   const [receivedAt, setReceivedAt] = useState<string>("")
   const [priorFromSender, setPriorFromSender] = useState<number | undefined>(undefined)
+  const [detectionMethod, setDetectionMethod] = useState<DetectionMethod>("both")
   const fileRef = useRef<HTMLInputElement | null>(null)
 
   const { trigger: analyze, isMutating, data, error, reset } = useSWRMutation("/api/analyze", analyzeFetcher)
@@ -59,14 +62,16 @@ export default function SmsAnalyzerForm() {
       receivedAt: receivedAt || undefined,
       priorFromSender:
         typeof priorFromSender === "number" && !Number.isNaN(priorFromSender) ? priorFromSender : undefined,
+      detectionMethod,
     }
     await analyze(body)
-  }, [text, receivedAt, priorFromSender, analyze])
+  }, [text, receivedAt, priorFromSender, detectionMethod, analyze])
 
   const onReset = useCallback(() => {
     setText("")
     setReceivedAt("")
     setPriorFromSender(undefined)
+    setDetectionMethod("both")
     reset()
   }, [reset])
 
@@ -144,6 +149,34 @@ export default function SmsAnalyzerForm() {
           />
         </div>
 
+        <div className="grid gap-3">
+          <Label>Detection Method</Label>
+          <RadioGroup
+            value={detectionMethod}
+            onValueChange={(value) => setDetectionMethod(value as DetectionMethod)}
+            className="grid gap-2"
+          >
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="both" id="both" />
+              <Label htmlFor="both" className="font-normal">
+                Both (Traditional ML + Multi-Agent) - Most comprehensive
+              </Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="ml-only" id="ml-only" />
+              <Label htmlFor="ml-only" className="font-normal">
+                Traditional ML only - Fast, statistical analysis (no Render wake-up time)
+              </Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="agents-only" id="agents-only" />
+              <Label htmlFor="agents-only" className="font-normal">
+                Multi-Agent Workflow only - Contextual LLM analysis
+              </Label>
+            </div>
+          </RadioGroup>
+        </div>
+
         <div className="flex gap-3">
           <Button type="button" onClick={onSubmit} disabled={isMutating}>
             {isMutating ? "Analyzing..." : "Run Analysis"}
@@ -178,70 +211,74 @@ export default function SmsAnalyzerForm() {
 
           <div className="grid gap-4">
             {/* Traditional ML Results */}
-            <Card className="border-blue-200 bg-blue-50/50">
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    🤖 Traditional ML Model
-                    <span className="text-xs font-normal text-muted-foreground">
-                      (SVM + TF-IDF • 93.97% accuracy)
-                    </span>
-                  </CardTitle>
-                  <div className={cn(
-                    "inline-flex rounded px-2 py-1 text-xs font-medium",
-                    data.ml.available ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
-                  )}>
-                    {data.ml.available ? "✅ Available" : "❌ Unavailable"}
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {data.ml.available ? (
-                  <>
+            {data.ml && (
+              <Card className="border-blue-200 bg-blue-50/50">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      🤖 Traditional ML Model
+                      <span className="text-xs font-normal text-muted-foreground">
+                        (SVM + TF-IDF • 93.97% accuracy)
+                      </span>
+                    </CardTitle>
                     <div className={cn(
-                      "inline-flex rounded px-2 py-1 text-sm font-medium",
-                      data.ml.is_fraud 
-                        ? "bg-red-100 text-red-800" 
-                        : "bg-green-100 text-green-800"
+                      "inline-flex rounded px-2 py-1 text-xs font-medium",
+                      data.ml.available ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
                     )}>
-                      {data.ml.prediction.toUpperCase()} • {Math.round(data.ml.confidence * 100)}% confidence
+                      {data.ml.available ? "✅ Available" : "❌ Unavailable"}
                     </div>
-                    
-                    {Object.keys(data.ml.probabilities).length > 0 && (
-                      <div className="text-xs text-muted-foreground space-y-1">
-                        <div>Class probabilities:</div>
-                        {Object.entries(data.ml.probabilities).map(([cls, prob]) => (
-                          <div key={cls} className="flex justify-between">
-                            <span>{cls}:</span>
-                            <span>{Math.round(prob * 100)}%</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <div className="text-sm text-muted-foreground">
-                    ML service unavailable. Using LLM agents only.
                   </div>
-                )}
-              </CardContent>
-            </Card>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  {data.ml.available ? (
+                    <>
+                      <div className={cn(
+                        "inline-flex rounded px-2 py-1 text-sm font-medium",
+                        data.ml.is_fraud 
+                          ? "bg-red-100 text-red-800" 
+                          : "bg-green-100 text-green-800"
+                      )}>
+                        {data.ml.prediction.toUpperCase()} • {Math.round(data.ml.confidence * 100)}% confidence
+                      </div>
+                      
+                      {Object.keys(data.ml.probabilities).length > 0 && (
+                        <div className="text-xs text-muted-foreground space-y-1">
+                          <div>Class probabilities:</div>
+                          {Object.entries(data.ml.probabilities).map(([cls, prob]) => (
+                            <div key={cls} className="flex justify-between">
+                              <span>{cls}:</span>
+                              <span>{Math.round(prob * 100)}%</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="text-sm text-muted-foreground">
+                      ML service unavailable. Using LLM agents only.
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
 
             {/* LLM Agent Results */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold flex items-center gap-2">
-                🧠 LLM Agents
-                <span className="text-sm font-normal text-muted-foreground">
-                  (Contextual Analysis)
-                </span>
-              </h3>
-              <div className="grid gap-4">
-                <AgentCard agent={data.agents.content} />
-                <AgentCard agent={data.agents.link} />
-                <AgentCard agent={data.agents.sender} />
-                <AgentCard agent={data.agents.context} />
+            {data.agents && (
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                  🧠 LLM Agents
+                  <span className="text-sm font-normal text-muted-foreground">
+                    (Contextual Analysis)
+                  </span>
+                </h3>
+                <div className="grid gap-4">
+                  <AgentCard agent={data.agents.content} />
+                  <AgentCard agent={data.agents.link} />
+                  <AgentCard agent={data.agents.sender} />
+                  <AgentCard agent={data.agents.context} />
+                </div>
               </div>
-            </div>
+            )}
           </div>
 
           <Card>
