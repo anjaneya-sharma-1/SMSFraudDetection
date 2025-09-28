@@ -1,14 +1,4 @@
 {
-  "env": {
-    "GROQ_API_KEY": "@groq-api-key",
-    "ML_SERVICE_URL": "@ml-service-url"
-  },
-  "build": {
-    "env": {
-      "GROQ_API_KEY": "@groq-api-key",
-      "ML_SERVICE_URL": "@ml-service-url"
-    }
-  },
   "functions": {
     "app/api/analyze/route.ts": {
       "maxDuration": 30
