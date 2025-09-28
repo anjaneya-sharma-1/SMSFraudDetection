@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server"
 import type { UserFeedbackPayload } from "@/lib/types"
 
+// Configure function timeout for Vercel
+export const maxDuration = 30
+
 export async function POST(req: Request) {
   const body = (await req.json().catch(() => ({}))) as Partial<UserFeedbackPayload>
   if (typeof body.correct !== "boolean" || !body.analysis) {

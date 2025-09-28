@@ -4,6 +4,9 @@ import { groq } from "@ai-sdk/groq"
 import type { AnalysisResult, AgentResult, DecisionResult } from "@/lib/types"
 import { clamp01, extractUrls, safeJson } from "@/lib/utils-local"
 
+// Configure function timeout for Vercel
+export const maxDuration = 30
+
 type AgentJSON = {
   score: number
   signals: string[]
