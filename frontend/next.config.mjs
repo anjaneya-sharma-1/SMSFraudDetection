@@ -9,6 +9,10 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  // Ensure API routes are properly handled
+  experimental: {
+    serverComponentsExternalPackages: ['ai'],
+  },
 }
 
 export default nextConfig
