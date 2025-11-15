@@ -234,6 +234,42 @@ weighted avg       0.94      0.94      0.94      1195
 - Real-time analysis feedback
 - Clear risk visualization
 - Mobile-responsive design
+## 🌐 Multilingual Support (Indian Regional Languages)
+
+This project now supports Indian regional languages (e.g., Hindi, Bengali, Tamil, Telugu, Marathi, Gujarati, Kannada, Malayalam, Punjabi, Odia) by automatically detecting and translating the original text to English before sending it to the ML classifier. LLM agents receive both the translated English text and the original message to reason about context and language-specific signals.
+
+Configuration:
+- `TRANSLATION_MODEL` environment variable (optional): choose the LLM model used for translation (defaults to `llama-3.3-70b-versatile`).
+ - `TRANSLATION_MODEL` environment variable (optional): choose the LLM model used for translation (defaults to `llama-3.3-70b-versatile`).
+ - `AGENT_MODEL` environment variable (optional): choose the default model for Agents (defaults to `llama-3.1-8b-instant`).
+ - `DECISION_MODEL` environment variable (optional): choose the model for the decision engine (defaults to `llama-3.3-70b-versatile`).
+- The ML service expects an English sentence for the pre-trained SVM model; translation is performed on the frontend before ML prediction.
+
+Notes:
+- The system uses the LLM to detect the message language and translate to English. Translation is logged as metadata and preserved for auditing.
+- Agent output now includes an explicit `classification` (benign|suspicious|unknown), a `suspicionScore` (0..1, where 1.0 is most suspicious), and a `confidence` (agent's internal confidence). If there is a mismatch (e.g., classification='benign' but high suspicionScore), agents are instructed to reconcile and explain the rationale clearly; the UI surfaces both values.
+
+Agent scoring semantics:
+- `suspicionScore`: numeric value between 0 and 1 where higher indicates more suspicious content. Agents use a threshold:
+  - suspicionScore >= 0.7 => classification: `suspicious`
+  - suspicionScore <= 0.4 => classification: `benign`
+  - otherwise => classification: `unknown`
+- `classification`: agent's overall judgement, must be one of `benign` | `suspicious` | `unknown`.
+- `mismatchExplanation`: when `classification` contradicts `suspicionScore` (outside the threshold heuristic), the agent must include a `mismatchExplanation` detailing why.
+
+Example decision note:
+- If an agent returns `classification: "benign"` but `suspicionScore: 0.7`, that means the agent sees a mix: a high numeric suspicion from signals (0.7) but the agent's final judgment is benign after considering factors such as sender reputation or timing. In this case, the agent must set a `mismatchExplanation` explaining why the final classification differs from numeric suspicion.
+
+Language handling in Agents:
+- Agents receive both the translated English text and the original language text. They must detect the language and include it in the `language` field.
+- Agents must call out transliteration/codemix or local-language clues that could be relevant for matching sender identity or expectedness.
+Example (Hindi):
+```bash
+curl -s -X POST http://localhost:3000/api/analyze -H "Content-Type: application/json" -d '{"text":"आपके खाते को निलंबित कर दिया जाएगा, यहाँ क्लिक करें: fake-bank.in/verify"}' | jq
+```
+The system will detect 'hi' (Hindi), translate to English, run ML prediction on the English text, and run multi-agent LLM analysis on the translation while preserving the original text for nuance.
+- For code-mixed or transliterated text, the translation attempt may be imperfect; agents are asked to flag ambiguous translations in their rationales.
+
 
 ## 🧪 Technical Implementation
 

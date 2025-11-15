@@ -5,7 +5,10 @@ export type AgentKey = "content" | "link" | "sender" | "context"
 export type AgentResult = {
   key: AgentKey
   name: string
-  score: number // 0..1
+  score: number // 0..1 — suspicion score (higher = more suspicious)
+  classification?: "benign" | "suspicious" | "unknown"
+  mismatchExplanation?: string
+  language?: string
   signals: string[]
   features: string[]
   rationale?: string
@@ -32,6 +35,8 @@ export type AnalysisResult = {
     priorFromSender?: number
     expected?: boolean
     detectionMethod: DetectionMethod
+    originalLanguage?: string // e.g., 'en', 'hi', 'te', etc.
+    translatedText?: string // the English translation if the text was non-English
   }
   ml: MLResult | null // null when not using ML
   agents: {

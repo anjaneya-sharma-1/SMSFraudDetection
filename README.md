@@ -260,4 +260,9 @@ weighted avg       0.94      0.94      0.94      1195
 
 ---
 
+## 🌐 Multilingual & Regional Language Support
+
+We now support Indian regional languages by auto-detecting the incoming SMS language and translating non-English inputs to English for the ML classifier. The LLM agents receive both the translated English text and the original text to preserve context and capture language-specific signals. You can configure the translation model via the `TRANSLATION_MODEL` environment variable in the frontend.
+
+
 **🛡️ Protecting users from SMS fraud with intelligent hybrid AI analysis! 🚀**

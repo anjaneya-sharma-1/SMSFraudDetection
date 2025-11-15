@@ -205,7 +205,13 @@ export default function SmsAnalyzerForm() {
                 Risk: {data.overall.risk.toUpperCase()}{" "}
                 {data.overall.confidence != null ? `• Confidence: ${Math.round(data.overall.confidence * 100)}%` : ""}
               </div>
-              <div className="text-sm text-muted-foreground">{data.overall.explanation}</div>
+                <div className="text-sm text-muted-foreground">{data.overall.explanation}</div>
+                {data.input.originalLanguage && (
+                  <div className="text-xs text-muted-foreground">Original language detected: {data.input.originalLanguage.toUpperCase()}</div>
+                )}
+                {data.input.translatedText && data.input.originalLanguage && data.input.originalLanguage !== 'en' && (
+                  <div className="text-xs text-muted-foreground">Translated text (English): {data.input.translatedText}</div>
+                )}
             </CardContent>
           </Card>
 
@@ -306,7 +312,11 @@ function AgentCard({ agent }: { agent: AgentResult }) {
     <Card>
       <CardHeader>
         <CardTitle className="text-lg">{agent.name}</CardTitle>
-        <CardDescription>Score: {Math.round(agent.score * 100)}%</CardDescription>
+        <div className="flex items-center gap-3">
+          <CardDescription>Classification: {agent.classification ?? 'unknown'}</CardDescription>
+          <CardDescription>Score: {Math.round(agent.score * 100)}%</CardDescription>
+          {agent.language && <CardDescription>Lang: {agent.language}</CardDescription>}
+        </div>
       </CardHeader>
       <CardContent className="space-y-3">
         {agent.signals?.length ? (
@@ -330,6 +340,9 @@ function AgentCard({ agent }: { agent: AgentResult }) {
           </div>
         ) : null}
         {agent.rationale ? <div className="text-sm text-muted-foreground">{agent.rationale}</div> : null}
+        {agent.mismatchExplanation ? (
+          <div className="text-sm text-warning">Mismatch note: {agent.mismatchExplanation}</div>
+        ) : null}
       </CardContent>
     </Card>
   )

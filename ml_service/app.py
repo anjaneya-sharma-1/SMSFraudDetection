@@ -18,12 +18,18 @@ app = FastAPI(title="SMS Fraud Detection ML Service", version="1.0.0")
 
 class SMSRequest(BaseModel):
     text: str
+    # Optional metadata when the text was translated before ML prediction
+    original_text: Optional[str] = None
+    language: Optional[str] = None
     
 class SMSResponse(BaseModel):
     prediction: str  # 'ham', 'spam', or 'smishing'
     confidence: float  # model confidence (0-1)
     probabilities: dict  # class probabilities
     is_fraud: bool  # True if spam or smishing
+    # Optional metadata when the caller translated the message before sending
+    language: Optional[str] = None
+    original_text: Optional[str] = None
 
 class HealthResponse(BaseModel):
     status: str
@@ -98,10 +104,15 @@ async def predict_fraud(request: SMSRequest):
         raise HTTPException(status_code=503, detail="Model not loaded")
     
     try:
-        # Log the request for debugging
-        logger.info(f"Received prediction request for text: {request.text[:50]}...")
+        # Log the request for debugging (include language metadata if present)
+        if request.language:
+            logger.info(f"Received prediction request for text (translated) [{request.language}]: {request.text[:50]}... | original: {request.original_text[:50] if request.original_text else 'n/a'}")
+        else:
+            logger.info(f"Received prediction request for text: {request.text[:50]}...")
         
         # Use the model directly
+        # Use the (likely translated) text for model prediction
+        # Note: If you want to support non-English models, add language-aware preprocessing here
         prediction = model.predict([request.text])[0]
         probabilities = model.predict_proba([request.text])[0]
         
@@ -125,7 +136,9 @@ async def predict_fraud(request: SMSRequest):
             prediction=str(prediction),
             confidence=float(confidence),
             probabilities=prob_dict,
-            is_fraud=is_fraud
+            is_fraud=is_fraud,
+            language=request.language,
+            original_text=request.original_text,
         )
         
     except Exception as e:

@@ -15,8 +15,10 @@ export async function POST(req: Request) {
     correct: body.correct,
     note: body.note ?? "",
     overall: body.analysis.overall,
-    agents: Object.fromEntries(Object.entries(body.analysis.agents).map(([k, v]) => [k, { score: v.score }])),
+    agents: Object.fromEntries(Object.entries(body.analysis.agents).map(([k, v]) => [k, { score: v.score, classification: v.classification, mismatchExplanation: v.mismatchExplanation }])),
     inputPreview: body.analysis.input.text.slice(0, 120),
+    originalLanguage: body.analysis.input.originalLanguage,
+    translatedPreview: body.analysis.input.translatedText?.slice(0, 120),
   })
 
   return NextResponse.json({ ok: true })

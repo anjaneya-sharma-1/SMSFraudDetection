@@ -81,6 +81,9 @@ In your Vercel project settings, add:
 |---------------|-------|---------|
 | `GROQ_API_KEY` | Your Groq API key | `gsk_...` |
 | `ML_SERVICE_URL` | Your Render service URL | `https://sms-fraud-ml-service.onrender.com` |
+| `TRANSLATION_MODEL` | Model for translation | `llama-3.3-70b-versatile` |
+| `AGENT_MODEL` | Default model for agents | `llama-3.1-8b-instant` |
+| `DECISION_MODEL` | Model for the decision engine | `llama-3.3-70b-versatile` |
 
 ---
 
